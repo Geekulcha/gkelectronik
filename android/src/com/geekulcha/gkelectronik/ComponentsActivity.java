@@ -18,6 +18,7 @@ import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -30,6 +31,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.support.v7.app.ActionBarActivity;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
 import android.util.DisplayMetrics;
@@ -45,9 +47,11 @@ import android.view.View.OnClickListener;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ToggleButton;
 
 import com.geekulcha.gkelectronik.components.SampleApplicationControl;
 import com.geekulcha.gkelectronik.components.SampleApplicationException;
@@ -142,11 +146,16 @@ public class ComponentsActivity extends Activity implements
 	ImageView image;
 	// Alert Dialog used to display SDK errors
 	private AlertDialog mErrorDialog;
-
+	ProgressBar pBar;
 	// Detects the double tap gesture for launching the Camera menu
 	private GestureDetector mGestureDetector;
 
 	private String lastTargetId = "";
+
+	// =====Klass declaring Flashlight variables and objects=====
+	private Camera camera;
+	private boolean isFlashOn;
+	private boolean hasFlash;
 
 	// size of the Texture to be generated with the book data
 	private static int mTextureSize = 768;
@@ -279,12 +288,18 @@ public class ComponentsActivity extends Activity implements
 
 	private Button btnOK;
 
+	private ToggleButton tgbutton;
+
 	// Called when the activity first starts or needs to be recreated after
 	// resuming the application or a configuration change.
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		Log.d(LOGTAG, "onCreate");
 		super.onCreate(savedInstanceState);
+
+		// ====Klass Check if device supports flashlight
+		hasFlash = getApplicationContext().getPackageManager()
+				.hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH);
 
 		vuforiaAppSession = new SampleApplicationSession(this);
 
@@ -317,6 +332,7 @@ public class ComponentsActivity extends Activity implements
 
 		try {
 			vuforiaAppSession.resumeAR();
+
 		} catch (SampleApplicationException e) {
 			Log.e(LOGTAG, e.getString());
 		}
@@ -350,6 +366,7 @@ public class ComponentsActivity extends Activity implements
 
 		try {
 			vuforiaAppSession.pauseAR();
+
 		} catch (SampleApplicationException e) {
 			Log.e(LOGTAG, e.getString());
 		}
@@ -390,7 +407,7 @@ public class ComponentsActivity extends Activity implements
 		// Inflates the Overlay Layout to be displayed above the Camera View
 		LayoutInflater inflater = LayoutInflater.from(this);
 		mUILayout = (RelativeLayout) inflater.inflate(
-				R.layout.camera_overlay_books, null, false);
+				R.layout.camera_overlay_components, null, false);
 
 		mUILayout.setVisibility(View.VISIBLE);
 		mUILayout.setBackgroundColor(Color.BLACK);
@@ -749,7 +766,8 @@ public class ComponentsActivity extends Activity implements
 	private class GetImageDataTask extends AsyncTask<String, Void, Bitmap> {
 
 		protected void onPreExecute() {
-
+			pBar = new ProgressBar(ComponentsActivity.this);
+			pBar.setIndeterminate(true);
 		}
 
 		protected Bitmap doInBackground(String... params) {
@@ -772,6 +790,7 @@ public class ComponentsActivity extends Activity implements
 		}
 
 		protected void onPostExecute(Bitmap bitmap) {
+			pBar.setVisibility(View.GONE);
 			image.setImageBitmap(bitmap);
 		}
 	}
@@ -1103,7 +1122,10 @@ public class ComponentsActivity extends Activity implements
 
 								final Dialog dialog = new Dialog(
 										ComponentsActivity.this);
+								dialog.setTitle("Component");
 								dialog.setContentView(R.layout.dialogview);
+								pBar = (ProgressBar) dialog
+										.findViewById(R.id.progress);
 								TextView type = (TextView) dialog
 										.findViewById(R.id.type);
 								TextView description = (TextView) dialog
@@ -1128,13 +1150,14 @@ public class ComponentsActivity extends Activity implements
 										startActivity(intent);
 									}
 								});
-								type.setText(mComponentData.getType());
+								type.setText("Name: "
+										+ mComponentData.getType());
 								description.setText(mComponentData
 										.getDescription());
 								wiki_url.setClickable(true);
 								wiki_url.setMovementMethod(LinkMovementMethod
 										.getInstance());
-								String text = "<a href='"
+								String text = "Link: <a href='"
 										+ mComponentData.getWiki_url() + "'>"
 										+ mComponentData.getWiki_url() + "</a>";
 								wiki_url.setText(Html.fromHtml(text));
@@ -1146,16 +1169,19 @@ public class ComponentsActivity extends Activity implements
 
 								dialog.show();
 
-								// AlertDialog.Builder diag = new
-								// AlertDialog.Builder(
-								// ComponentsActivity.this);
-								// diag.setTitle("");
-								// StringBuilder sB = new StringBuilder();
-								// sB.append(mComponentData.getDescription());
-								// sB.append("\n");
-								// sB.append(mComponentData.getWiki_url());
-								// diag.setMessage(sB.toString());
-								// diag.show();
+								// Intent intent = new Intent(
+								// ComponentsActivity.this,
+								// DetailsActivity.class);
+								// intent.putExtra("type", jsonObject
+								// .getString(mComponentData.getType()));
+								// intent.putExtra("description",
+								// mComponentData.getDescription());
+								// intent.putExtra("wiki_url",
+								// mComponentData.getWiki_url());
+								// intent.putExtra("thumburl", jsonObject
+								// .getString("thumburl").toString());
+								// startActivity(intent);
+
 							} catch (Exception ex) {
 								ex.printStackTrace();
 							}
@@ -1257,10 +1283,49 @@ public class ComponentsActivity extends Activity implements
 	public boolean doDeinitTrackers() {
 		// Indicate if the trackers were deinitialized correctly
 		boolean result = true;
-
 		TrackerManager tManager = TrackerManager.getInstance();
 		tManager.deinitTracker(ImageTracker.getClassType());
 
 		return result;
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		switch (item.getItemId()) {
+		case R.id.action_settings:
+			Dialog dialog = new Dialog(this);
+			dialog.setTitle("Flash Light");
+			dialog.setContentView(R.layout.layout_flashlight);
+			tgbutton = (ToggleButton) dialog.findViewById(R.id.flashToggle);
+			tgbutton.setOnClickListener(new OnClickListener() {
+
+				@Override
+				public void onClick(View v) {
+
+					if (tgbutton.isChecked()) {
+						CameraDevice.getInstance().setFlashTorchMode(true);
+						// Toast.makeText(ComponentsActivity.this,
+						// "&quot;ON&quot;", Toast.LENGTH_SHORT).show();
+					} else {
+						CameraDevice.getInstance().setFlashTorchMode(false);
+						// Toast.makeText(ComponentsActivity.this,
+						// "&quot;OFF&quot;", Toast.LENGTH_SHORT).show();
+					}
+				}
+			});
+
+			dialog.show();
+			break;
+
+		default:
+			break;
+		}
+		return super.onOptionsItemSelected(item);
+	}
+
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		getMenuInflater().inflate(R.menu.components_activity_menu, menu);
+		return super.onCreateOptionsMenu(menu);
 	}
 }
