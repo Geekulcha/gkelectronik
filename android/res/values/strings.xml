@@ -39,5 +39,6 @@
     <string name="UPDATE_ERROR_BAD_FRAME_QUALITY_DESC">The camera does not have enough detail, please try again later.</string>
     <string name="UPDATE_ERROR_UNKNOWN_DESC">The service is unavaiable, please try again later.</string>
     <string name="splash_screen_description">Vuforia Splash</string>
+    <string name="title_activity_main_activity_">MainActivity_</string>
 
 </resources>

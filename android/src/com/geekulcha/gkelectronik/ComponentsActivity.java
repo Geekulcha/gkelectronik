@@ -30,10 +30,14 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.text.Html;
+import android.text.method.LinkMovementMethod;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.MeasureSpec;
@@ -130,13 +134,12 @@ public class ComponentsActivity extends Activity implements
 	// View overlays to be displayed in the Augmented View
 	private RelativeLayout mUILayout;
 	private TextView mStatusBar;
-	private Button mCloseButton;
 
 	// Error message handling:
 	private int mlastErrorCode = 0;
 	private int mInitErrorCode = 0;
 	private boolean mFinishActivityOnError;
-
+	ImageView image;
 	// Alert Dialog used to display SDK errors
 	private AlertDialog mErrorDialog;
 
@@ -256,14 +259,6 @@ public class ComponentsActivity extends Activity implements
 			if (books == null) {
 				return;
 			}
-
-			if (books.mCloseButton != null) {
-				if (msg.what == SHOW_2D_OVERLAY) {
-					books.mCloseButton.setVisibility(View.VISIBLE);
-				} else {
-					books.mCloseButton.setVisibility(View.GONE);
-				}
-			}
 		}
 	}
 
@@ -279,6 +274,10 @@ public class ComponentsActivity extends Activity implements
 	boolean mIsDroidDevice = false;
 
 	private String currTargetId;
+
+	private GetImageDataTask mGetImageDataTask;
+
+	private Button btnOK;
 
 	// Called when the activity first starts or needs to be recreated after
 	// resuming the application or a configuration change.
@@ -413,32 +412,6 @@ public class ComponentsActivity extends Activity implements
 				.sendEmptyMessage(LoadingDialogHandler.SHOW_LOADING_DIALOG);
 
 		// Gets a reference to the Close Button
-		mCloseButton = (Button) mUILayout
-				.findViewById(R.id.overlay_close_button);
-
-		// Sets the Close Button functionality
-		mCloseButton.setOnClickListener(new OnClickListener() {
-			public void onClick(View v) {
-				// Updates application status
-				mCOMPONENTINFOStatus = COMPONENTINFO_NOT_DISPLAYED;
-
-				loadingDialogHandler.sendEmptyMessage(HIDE_LOADING_DIALOG);
-
-				// Checks if the app is currently loading a book data
-				if (mIsLoadingBookData) {
-
-					// Cancels the AsyncTask
-					mGetComponentDataTask.cancel(true);
-					mIsLoadingBookData = false;
-
-					// Cleans the Target Tracker Id
-					cleanTargetTrackedId();
-				}
-
-				// Enters Scanning Mode
-				enterScanningMode();
-			}
-		});
 
 		// As default the 2D overlay and Status bar are hidden when application
 		// starts
@@ -673,40 +646,6 @@ public class ComponentsActivity extends Activity implements
 				Log.i("RESPONSE -=========>>>>>>>>.", builder.toString());
 				JSONObject jsonObject = new JSONObject(builder.toString());
 
-				// Generates a new Book Object with the JSON object data
-				mComponentData = new ComponentsModel();
-
-				mComponentData.setType(jsonObject.getString("type"));
-				mComponentData.setDescription(jsonObject
-						.getString("description"));
-				mComponentData.setWiki_url(jsonObject.getString("wiki_url"));
-
-				Dialog dialog = new Dialog(
-						ComponentsActivity.this);
-				TextView type = (TextView) dialog
-						.findViewById(R.id.type);
-				TextView description = (TextView) dialog
-						.findViewById(R.id.description);
-				TextView wiki_url = (TextView) dialog
-						.findViewById(R.id.url);
-				ImageView image = (ImageView) dialog
-						.findViewById(R.id.image);
-
-				type.setText(mComponentData.getType());
-				description.setText(mComponentData.getDescription());
-				description.setText(mComponentData.getWiki_url());
-				
-				// Gets the book thumb image
-				byte[] thumb = downloadImage(jsonObject.getString("thumburl"));
-
-				if (thumb != null) {
-
-					Bitmap bitmap = BitmapFactory.decodeByteArray(thumb, 0,
-							thumb.length);
-					mComponentData.setThumb_image(bitmap);
-					image.setImageBitmap(bitmap);
-				}
-				 dialog.show();
 			} catch (Exception e) {
 				Log.d(LOGTAG, "Couldn't get books. e: " + e);
 			} finally {
@@ -803,6 +742,37 @@ public class ComponentsActivity extends Activity implements
 				//
 				productTextureIsCreated();
 			}
+		}
+	}
+
+	/** Gets the book data from a JSON Object */
+	private class GetImageDataTask extends AsyncTask<String, Void, Bitmap> {
+
+		protected void onPreExecute() {
+
+		}
+
+		protected Bitmap doInBackground(String... params) {
+			// Gets the book thumb image
+			byte[] thumb = downloadImage(params[0]);
+
+			if (thumb != null) {
+
+				Bitmap bitmap = BitmapFactory.decodeByteArray(thumb, 0,
+						thumb.length);
+				mComponentData.setThumb_image(bitmap);
+				return bitmap;
+
+			}
+			return null;
+		}
+
+		protected void onProgressUpdate(Void... values) {
+
+		}
+
+		protected void onPostExecute(Bitmap bitmap) {
+			image.setImageBitmap(bitmap);
 		}
 	}
 
@@ -1120,6 +1090,8 @@ public class ComponentsActivity extends Activity implements
 								// Generates a new Book Object with the JSON
 								// object
 								// data
+								// Generates a new Book Object with the JSON
+								// object data
 								mComponentData = new ComponentsModel();
 
 								mComponentData.setType(jsonObject
@@ -1129,26 +1101,56 @@ public class ComponentsActivity extends Activity implements
 								mComponentData.setWiki_url(jsonObject
 										.getString("wiki_url"));
 
-								// Gets the book thumb image
-								byte[] thumb = downloadImage(jsonObject
+								final Dialog dialog = new Dialog(
+										ComponentsActivity.this);
+								dialog.setContentView(R.layout.dialogview);
+								TextView type = (TextView) dialog
+										.findViewById(R.id.type);
+								TextView description = (TextView) dialog
+										.findViewById(R.id.description);
+								TextView wiki_url = (TextView) dialog
+										.findViewById(R.id.url);
+
+								image = (ImageView) dialog
+										.findViewById(R.id.image);
+								btnOK = (Button) dialog
+										.findViewById(R.id.btnOK);
+								btnOK.setOnClickListener(new OnClickListener() {
+
+									@Override
+									public void onClick(View v) {
+										dialog.dismiss();
+
+										Intent intent = new Intent(
+												getApplicationContext(),
+												ComponentsActivity.class);
+										finish();
+										startActivity(intent);
+									}
+								});
+								type.setText(mComponentData.getType());
+								description.setText(mComponentData
+										.getDescription());
+								wiki_url.setClickable(true);
+								wiki_url.setMovementMethod(LinkMovementMethod
+										.getInstance());
+								String text = "<a href='"
+										+ mComponentData.getWiki_url() + "'>"
+										+ mComponentData.getWiki_url() + "</a>";
+								wiki_url.setText(Html.fromHtml(text));
+
+								// Searches for the book data in an AsyncTask
+								mGetImageDataTask = new GetImageDataTask();
+								mGetImageDataTask.execute(jsonObject
 										.getString("thumburl"));
 
-								if (thumb != null) {
+								dialog.show();
 
-									Bitmap bitmap = BitmapFactory
-											.decodeByteArray(thumb, 0,
-													thumb.length);
-									mComponentData.setThumb_image(bitmap);
-								}
-								
-								
 								// AlertDialog.Builder diag = new
 								// AlertDialog.Builder(
 								// ComponentsActivity.this);
 								// diag.setTitle("");
 								// StringBuilder sB = new StringBuilder();
-								// sB.append();
-								// sB.append("\n");
 								// sB.append(mComponentData.getDescription());
 								// sB.append("\n");
 								// sB.append(mComponentData.getWiki_url());
@@ -1248,7 +1250,6 @@ public class ComponentsActivity extends Activity implements
 		} else {
 			result = false;
 		}
-
 		return result;
 	}
 
@@ -1262,5 +1263,4 @@ public class ComponentsActivity extends Activity implements
 
 		return result;
 	}
-
 }

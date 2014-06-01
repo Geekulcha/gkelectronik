@@ -13,7 +13,7 @@
 
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- Allows access to the flashlight -->
-  
+
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
@@ -23,7 +23,7 @@
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
         <activity
-            android:name=".SplashActivity"
+            android:name="com.geekulcha.gkelectronik.SplashActivity"
             android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize"
             android:label="@string/app_name" >
             <intent-filter>
@@ -33,17 +33,13 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".MainActivity"
-            android:label="@string/app_name" >
-        </activity>
-        <activity
-            android:name=".ComponentsActivity"
+            android:name="com.geekulcha.gkelectronik.ComponentsActivity"
             android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize"
             android:label="@string/title_activity_components"
             android:theme="@style/SampleAppsTheme" >
         </activity>
         <activity
-            android:name=".AboutScreen"
+            android:name="com.geekulcha.gkelectronik.AboutScreen"
             android:configChanges="orientation|keyboardHidden"
             android:screenOrientation="portrait" >
         </activity>
